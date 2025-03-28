@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Scientific Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Color Palette */
+        :root {
+            --bg-light: #e8d8c9; /* Light Beige */
+            --accent-blue: #4b607f; /* Muted Blue */
+            --accent-orange: #f3701e; /* Bright Orange */
+            --text-dark: #333333;  /* Dark Grey for text */
+            --bg-dark: #2d2d2d;   /* Dark background for calculator body */
+            --accent-red: #D9534F;  /* Red for clear/error */
+            --shadow-light: rgba(255, 255, 255, 0.4);
+            --shadow-dark: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--bg-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px; /* Base font size */
+        }
+
+        .calculator {
+            background-color: var(--bg-dark);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 0 5px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px; /* Adjust max-width as needed */
+            border: 2px solid #555;
+        }
+
+        .display {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: right;
+            box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);
+            border: 1px solid #bbb;
+            position: relative; /* For history */
+            overflow: hidden;
+        }
+
+        #history-display {
+            font-size: 0.8em;
+            color: #666;
+            height: 1.2em;
+            margin-bottom: 5px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            opacity: 0.7;
+        }
+
+        #main-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2em; /* Larger display font */
+            min-height: 1.5em;
+            line-height: 1.5em;
+            word-wrap: break-word;
+            word-break: break-all; /* Break long numbers */
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr); /* Adjust columns based on layout */
+            gap: 10px;
+        }
+
+        button {
+            font-family: 'Roboto Mono', monospace;
+            font-weight: 500;
+            padding: 15px 5px; /* Adjust padding */
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            box-shadow: 1px 1px 2px var(--shadow-dark), -1px -1px 2px var(--shadow-light), inset 0 0 0 transparent;
+            transition: all 0.1s ease-in-out;
+            min-width: 50px; /* Ensure minimum button width */
+            text-align: center;
+        }
+
+        button:active, button.active-key { /* Add active-key style for keyboard feedback */
+            box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+            transform: translateY(1px);
+        }
+
+        /* Specific Button Styles */
+        button.number {
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+        button.number:hover {
+             background-color: #f5e9dc;
+        }
+
+        button.operator, button.memory {
+            background-color: var(--accent-blue);
+            color: var(--bg-light);
+        }
+         button.operator:hover, button.memory:hover {
+            background-color: #5c7091;
+         }
+
+        button.function {
+            background-color: #6a86ad; /* Slightly lighter blue for functions */
+            color: var(--bg-light);
+            font-size: 0.9em; /* Slightly smaller font for function names */
+             padding: 15px 2px; /* Adjust padding for smaller text */
+        }
+        button.function:hover {
+             background-color: #7b96bd;
+        }
+         button.function.active { /* Style for active DEG/RAD */
+             box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+             background-color: #3a4e68;
+         }
+
+
+        button.special {
+             background-color: var(--accent-red);
+             color: var(--bg-light);
+        }
+        button.special:hover {
+             background-color: #e06864;
+        }
+
+        button.equals {
+             background-color: var(--accent-orange);
+             color: var(--bg-light);
+             grid-column: span 2; /* Make equals button wider */
+             font-weight: bold;
+        }
+         button.equals:hover {
+            background-color: #ff8c3b;
+         }
+    </style>
+</head>
+<body>
+
+    <div class="calculator">
+        <div class="display">
+            <div id="history-display"></div>
+            <div id="main-display">0</div>
+        </div>
+        <div class="buttons">
+            <!-- Row 1: Functions -->
+            <button class="function" data-action="toggle-mode" id="angle-mode">DEG</button>
+            <button class="function" data-action="factorial" data-key="!">x!</button>
+            <button class="function" data-action="sin" data-key="s">sin</button>
+            <button class="function" data-action="cos" data-key="c">cos</button>
+            <button class="function" data-action="tan" data-key="t">tan</button>
+            <button class="function" data-action="power" data-key="^">xʸ</button>
+
+            <!-- Row 2: Functions -->
+             <button class="function" data-action="pi" data-key="p">π</button>
+             <button class="function" data-action="e" data-key="e">e</button>
+            <button class="function" data-action="asin">sin⁻¹</button> <!-- No simple key mapping -->
+            <button class="function" data-action="acos">cos⁻¹</button> <!-- No simple key mapping -->
+            <button class="function" data-action="atan">tan⁻¹</button> <!-- No simple key mapping -->
+            <button class="function" data-action="log" data-key="l">log</button>
+
+            <!-- Row 3: Functions & Memory -->
+            <button class="memory" data-action="mc">MC</button>
+            <button class="memory" data-action="mr">MR</button>
+            <button class="memory" data-action="m-plus">M+</button>
+            <button class="memory" data-action="m-minus">M-</button>
+             <button class="function" data-action="reciprocal" data-key="r">1/x</button>
+            <button class="function" data-action="ln">ln</button> <!-- No simple key mapping -->
+
+            <!-- Row 4: Clear, Basic Ops -->
+            <button class="special" data-action="clear-entry" data-key="Backspace">CE</button>
+            <button class="special" data-action="clear" data-key="Escape">C</button>
+            <button class="operator" data-action="negate" data-key="n">+/-</button>
+            <button class="operator" data-action="percent" data-key="%">%</button>
+            <button class="function" data-action="sqrt" data-key="q">√</button>
+            <button class="operator" data-action="divide" data-key="/">÷</button>
+
+             <!-- Row 5: Numbers & Ops -->
+            <button class="number" data-value="7" data-key="7">7</button>
+            <button class="number" data-value="8" data-key="8">8</button>
+            <button class="number" data-value="9" data-key="9">9</button>
+             <button class="function" data-action="square">x²</button> <!-- No simple key mapping -->
+             <button class="function" data-action="cube">x³</button> <!-- No simple key mapping -->
+            <button class="operator" data-action="multiply" data-key="*">×</button>
+
+            <!-- Row 6: Numbers & Ops -->
+            <button class="number" data-value="4" data-key="4">4</button>
+            <button class="number" data-value="5" data-key="5">5</button>
+            <button class="number" data-value="6" data-key="6">6</button>
+             <button class="function" data-action="cbrt">³√</button> <!-- No simple key mapping -->
+             <button class="number" data-value="." data-key=".">.</button>
+            <button class="operator" data-action="subtract" data-key="-">−</button>
+
+
+            <!-- Row 7: Numbers, Equals & Ops -->
+            <button class="number" data-value="1" data-key="1">1</button>
+            <button class="number" data-value="2" data-key="2">2</button>
+            <button class="number" data-value="3" data-key="3">3</button>
+            <button class="number" data-value="0" data-key="0">0</button>
+            <button class="equals" data-action="calculate" data-key="Enter">=</button>
+            <button class="operator" data-action="add" data-key="+">+</button>
+
+        </div>
+    </div>
+
+    <script>
+        const mainDisplay = document.getElementById('main-display');
+        const historyDisplay = document.getElementById('history-display');
+        const buttonsContainer = document.querySelector('.buttons');
+        const angleModeButton = document.getElementById('angle-mode');
+
+        let currentOperand = '0';
+        let previousOperand = '';
+        let operation = null;
+        let displayNeedsReset = false;
+        let memoryValue = 0;
+        let angleMode = 'DEG'; // 'DEG' or 'RAD'
+        let isError = false;
+        let isCalculatingPower = false; // Flag for x^y operation
+
+        function updateDisplay() {
+            if (isError) {
+                mainDisplay.textContent = 'Error';
+                mainDisplay.style.fontSize = '1.5em'; // Smaller font for Error
+            } else {
+                 // Limit display length to avoid overflow, adjust font size if needed
+                const maxLength = 15;
+                let displayValue = currentOperand;
+
+                if (displayValue.length > maxLength) {
+                    try {
+                       let num = parseFloat(displayValue);
+                       if (Math.abs(num) > 1e15 || (Math.abs(num) < 1e-6 && num !== 0)) {
+                           displayValue = num.toExponential(9);
+                       } else {
+                           displayValue = displayValue.substring(0, maxLength) + '...';
+                       }
+                    } catch (e) {
+                        displayValue = displayValue.substring(0, maxLength) + '...';
+                    }
+                }
+
+                mainDisplay.textContent = displayValue;
+                if (displayValue.length > 12) {
+                     mainDisplay.style.fontSize = '1.7em';
+                } else if (displayValue.length > 9) {
+                     mainDisplay.style.fontSize = '1.9em';
+                } else {
+                    mainDisplay.style.fontSize = '2em';
+                }
+            }
+
+            // Update history
+            if (operation != null && !isCalculatingPower) {
+                 historyDisplay.textContent = `${previousOperand} ${getOperationSymbol(operation)}`;
+            } else if (isCalculatingPower) {
+                historyDisplay.textContent = `${previousOperand} ^`;
+            } else {
+                 historyDisplay.textContent = '';
+            }
+        }
+
+        function getOperationSymbol(op) {
+            switch (op) {
+                case 'add': return '+';
+                case 'subtract': return '−';
+                case 'multiply': return '×';
+                case 'divide': return '÷';
+                case 'power': return '^';
+                default: return '';
+            }
+        }
+
+        function handleNumberClick(value) {
+            if (isError) return;
+            if (displayNeedsReset) {
+                currentOperand = '0';
+                displayNeedsReset = false;
+            }
+            if (value === '.' && currentOperand.includes('.')) return;
+            if (currentOperand.length >= 20) return;
+
+            if (currentOperand === '0' && value !== '.') {
+                currentOperand = value;
+            } else {
+                currentOperand += value;
+            }
+            updateDisplay(); // Update display immediately after number input
+        }
+
+        function handleOperatorClick(op) {
+            if (isError) return;
+            if (currentOperand === '' && previousOperand === '') return;
+
+            if (operation && !displayNeedsReset) {
+                calculate();
+                 if (isError) return;
+            }
+
+            if (op === 'power') {
+                isCalculatingPower = true;
+            } else {
+                 isCalculatingPower = false;
+            }
+
+            if (currentOperand !== '' || previousOperand !== '') {
+                if (currentOperand === '' && previousOperand !== '') {
+                    // Allow chaining: 5 * = 25, then + 5 = 30
+                } else {
+                     previousOperand = currentOperand;
+                }
+                operation = op;
+                currentOperand = '';
+                displayNeedsReset = true;
+            } else {
+                 operation = op;
+                 displayNeedsReset = true;
+            }
+
+             if (previousOperand !== '' && currentOperand === '') {
+                  operation = op;
+             } else {
+                  if (!isError && currentOperand !== '') {
+                    previousOperand = currentOperand;
+                  }
+                  operation = op;
+                  currentOperand = '';
+                  displayNeedsReset = true;
+             }
+             updateDisplay(); // Update history display when operator is chosen
+        }
+
+        function calculate() {
+            if (isError) return; // Don't calculate if already in error state
+
+            let performCalculation = false;
+            if (operation !== null && previousOperand !== '') {
+                if (currentOperand !== '') {
+                    performCalculation = true;
+                } else if (displayNeedsReset) {
+                    // Handle case like 5 * = (result), then = again (repeats operation)
+                    // Or 5 * + (use 5 as second operand for +) -> less standard, avoid for now
+                    // Let's stick to standard: 5 * = result. Another = does nothing unless chain started.
+                    // Let's allow 5 * = 25, then + -> uses 25 as prev operand
+                    // If we hit '=' right after an operator (5 * =), treat currentOperand as previousOperand
+                    if (!isCalculatingPower) { // Don't auto-fill for power second operand
+                         currentOperand = previousOperand; // Use previous operand again (e.g., 5 * =)
+                         performCalculation = true;
+                    }
+                 }
+            }
+
+            if (!performCalculation) {
+                 // If no operation pending but we hit equals, do nothing, or maybe repeat last? (Keep it simple: do nothing)
+                 return;
+            }
+
+
+            let result;
+            const prev = parseFloat(previousOperand);
+            // Use currentOperand directly. If it was empty and needed filling, it was done above.
+            const current = parseFloat(currentOperand);
+
+
+            if (isNaN(prev) || isNaN(current)) {
+                // This check might be redundant if input handling is robust, but good safety net
+                 if (!isCalculatingPower || isNaN(prev)) { // Allow power calculation if only current is NaN (waiting for input)
+                     setError();
+                     return;
+                 }
+                 // If calculating power and current is NaN, just wait for input, don't error yet
+                 if (isCalculatingPower && isNaN(current)) {
+                      return; // Waiting for second operand for power
+                 }
+            }
+
+            try {
+                switch (operation) {
+                    case 'add':
+                        result = prev + current;
+                        break;
+                    case 'subtract':
+                        result = prev - current;
+                        break;
+                    case 'multiply':
+                        result = prev * current;
+                        break;
+                    case 'divide':
+                        if (current === 0) throw new Error("Division by zero");
+                        result = prev / current;
+                        break;
+                    case 'power':
+                        result = Math.pow(prev, current);
+                        break;
+                    default:
+                        return; // Should not happen
+                }
+
+                if (!isFinite(result)) {
+                    throw new Error("Result is Infinity or NaN");
+                }
+
+                currentOperand = formatResult(result);
+                operation = null;
+                previousOperand = ''; // Clear previous after calculation
+                displayNeedsReset = true; // Next number input should clear the result
+                isCalculatingPower = false; // Calculation finished
+
+            } catch (error) {
+                console.error("Calculation Error:", error.message);
+                setError();
+            } finally {
+                 updateDisplay(); // Update display regardless of success/error from calc
+            }
+        }
+
+
+         function formatResult(num) {
+             let strNum = String(num);
+             if (Math.abs(num) < 1e-10) return '0';
+
+             if (strNum.includes('e')) { // Already in scientific, ensure reasonable precision
+                 return num.toExponential(9);
+             }
+
+             if (strNum.includes('.')) {
+                  const maxDecimalPlaces = 10;
+                  if (strNum.split('.')[1] && strNum.split('.')[1].length > maxDecimalPlaces) {
+                       strNum = num.toFixed(maxDecimalPlaces);
+                  }
+                  // Use parseFloat to remove unnecessary trailing zeros and '.' if integer
+                  strNum = String(parseFloat(strNum));
+             }
+             // Add check for very large numbers that are *not* in scientific notation yet
+             if (strNum.length > 15 && !strNum.includes('e')) {
+                  try {
+                       return parseFloat(strNum).toExponential(9);
+                  } catch {
+                       // fallback if somehow it's not parsable but long
+                       return strNum.substring(0, 15) + '...';
+                  }
+             }
+
+             return strNum;
+         }
+
+        function handleFunctionClick(func) {
+            if (isError) return;
+             if (currentOperand === '' && previousOperand !== '' && displayNeedsReset && !operation) {
+                  // Allow function on result right after '=' or another function
+                  currentOperand = previousOperand;
+                  previousOperand = ''; // Clear previous as the function modifies the current value
+             } else if (currentOperand === '' && func !== 'pi' && func !== 'e') {
+                  return; // No operand to work on for most functions
+             }
+
+
+            let value = parseFloat(currentOperand);
+            // Allow Pi and E even if display is empty/invalid/zero
+             if (isNaN(value) && func !== 'pi' && func !== 'e') {
+                 // If it's a function that requires a number, and we don't have one, error out
+                 setError();
+                 return;
+            }
+
+            let result;
+            try {
+                switch (func) {
+                     case 'pi':
+                        result = Math.PI;
+                        break;
+                    case 'e':
+                        result = Math.E;
+                        break;
+                    case 'sin': case 'cos': case 'tan':
+                         if (isNaN(value)) throw new Error("Invalid input for trig");
+                         result = handleTrig(func, value);
+                         break;
+                     case 'asin': case 'acos': case 'atan':
+                          if (isNaN(value)) throw new Error("Invalid input for inverse trig");
+                         result = handleInverseTrig(func, value);
+                         break;
+                    case 'log': // base 10
+                        if (isNaN(value) || value <= 0) throw new Error("Log input must be > 0");
+                        result = Math.log10(value);
+                        break;
+                    case 'ln': // natural log
+                         if (isNaN(value) || value <= 0) throw new Error("Ln input must be > 0");
+                        result = Math.log(value);
+                        break;
+                    case 'sqrt':
+                        if (isNaN(value) || value < 0) throw new Error("Sqrt input must be >= 0");
+                        result = Math.sqrt(value);
+                        break;
+                     case 'cbrt':
+                          if (isNaN(value)) throw new Error("Invalid input for cbrt");
+                         result = Math.cbrt(value);
+                         break;
+                    case 'square':
+                         if (isNaN(value)) throw new Error("Invalid input for square");
+                        result = Math.pow(value, 2);
+                        break;
+                     case 'cube':
+                         if (isNaN(value)) throw new Error("Invalid input for cube");
+                         result = Math.pow(value, 3);
+                         break;
+                    case 'reciprocal':
+                        if (isNaN(value) || value === 0) throw new Error("Reciprocal input cannot be 0");
+                        result = 1 / value;
+                        break;
+                    case 'factorial':
+                         if (isNaN(value)) throw new Error("Invalid input for factorial");
+                        result = factorial(value);
+                        break;
+                    default:
+                        return; // Unknown function
+                }
+
+                 if (!isFinite(result)) {
+                    throw new Error("Invalid result (NaN/Infinity)");
+                 }
+
+                currentOperand = formatResult(result);
+                displayNeedsReset = true;
+                previousOperand = ''; // Function applied, clear pending operation context
+                operation = null;
+                isCalculatingPower = false; // Cancel power mode if function is used
+
+            } catch (error) {
+                console.error("Function Error:", error.message);
+                setError();
+            } finally {
+                 updateDisplay();
+            }
+        }
+
+        function handleTrig(func, value) {
+             let angle = value;
+             if (angleMode === 'DEG') {
+                 angle = value * (Math.PI / 180);
+             }
+             let result;
+             const tolerance = 1e-15; // Tolerance for floating point comparisons
+
+             if (func === 'tan') {
+                 const cosAngle = Math.cos(angle);
+                 if (Math.abs(cosAngle) < tolerance) {
+                     throw new Error("Tan undefined for this angle");
+                 }
+                result = Math.tan(angle);
+             } else if (func === 'sin') {
+                 result = Math.sin(angle);
+             } else if (func === 'cos') {
+                  result = Math.cos(angle);
+             } else {
+                  return value; // Should not happen
+             }
+             // Correct near-zero results due to float precision (e.g., sin(pi))
+             return Math.abs(result) < tolerance ? 0 : result;
+        }
+
+        function handleInverseTrig(func, value) {
+             if (func !== 'atan' && (value < -1 || value > 1)) {
+                 throw new Error("Input for asin/acos must be in [-1, 1]");
+             }
+              let resultRad;
+
+             switch(func) {
+                 case 'asin': resultRad = Math.asin(value); break;
+                 case 'acos': resultRad = Math.acos(value); break;
+                 case 'atan': resultRad = Math.atan(value); break;
+                 default: return value;
+             }
+
+             if (angleMode === 'DEG') {
+                 return resultRad * (180 / Math.PI);
+             } else {
+                 return resultRad;
+             }
+        }
+
+
+        function factorial(n) {
+            if (n < 0 || !Number.isInteger(n)) {
+                throw new Error("Factorial input must be a non-negative integer");
+            }
+            if (n === 0 || n === 1) {
+                return 1;
+            }
+             if (n > 170) {
+                 throw new Error("Factorial result too large");
+             }
+            let result = 1;
+            for (let i = 2; i <= n; i++) {
+                result *= i;
+            }
+            return result;
+        }
+
+
+        function handleAction(action) {
+             // If error state, only allow C or CE
+             if (isError && action !== 'clear' && action !== 'clear-entry') {
+                 return;
+             }
+
+            switch (action) {
+                case 'clear': clearAll(); break;
+                case 'clear-entry': clearEntry(); break;
+                case 'calculate': calculate(); break;
+                case 'negate': negate(); break;
+                case 'percent': percent(); break;
+                case 'toggle-mode': toggleAngleMode(); break;
+                // Memory functions
+                case 'mc': memoryClear(); break;
+                case 'mr': memoryRecall(); break;
+                case 'm-plus': memoryAdd(); break;
+                case 'm-minus': memorySubtract(); break;
+                // Operators and Functions are handled by their specific handlers now
+                // default: console.warn("Unhandled action:", action); // Keep for debugging maybe
+            }
+             // Update display for actions that modify state directly (like negate, percent, CE, C, MR)
+            if (['negate', 'percent', 'clear', 'clear-entry', 'mr', 'toggle-mode'].includes(action)) {
+                 updateDisplay();
+            }
+        }
+
+        function clearAll() {
+            currentOperand = '0';
+            previousOperand = '';
+            operation = null;
+            displayNeedsReset = false;
+            isError = false;
+            isCalculatingPower = false;
+            updateDisplay();
+        }
+
+        function clearEntry() {
+            if (isError) {
+                clearAll();
+            } else {
+                currentOperand = '0';
+                // Don't reset displayNeedsReset here - if user was typing 123+CE, they want to type new number
+                // Let the next number click handle displayNeedsReset = false
+                 isCalculatingPower = false; // Cancel power state
+                updateDisplay(); // Show the cleared '0'
+            }
+        }
+
+        function negate() {
+            if (isError || currentOperand === '' || parseFloat(currentOperand) == 0) return; // Don't negate empty or zero
+            // If displayNeedsReset is true, it means a result is shown. Negate the result.
+            if (displayNeedsReset && previousOperand !== '') {
+                 currentOperand = previousOperand; // Apply negate to the previous result stored internally
+                 previousOperand = '';
+                 operation = null; // Negating result cancels pending operation
+            }
+
+            if (currentOperand.startsWith('-')) {
+                currentOperand = currentOperand.substring(1);
+            } else {
+                currentOperand = '-' + currentOperand;
+            }
+             displayNeedsReset = false; // Negating modifies the current number, doesn't require reset
+        }
+
+        function percent() {
+             if (isError || currentOperand === '') return;
+             try {
+                let value = parseFloat(currentOperand);
+                 if (isNaN(value)) throw new Error("Invalid input for percent");
+
+                 let baseValue = 1; // Default: calculate percentage of 1 (value / 100)
+                 if (previousOperand !== '' && (operation === 'add' || operation === 'subtract')) {
+                      // % relative to previous operand for + / -
+                      baseValue = parseFloat(previousOperand);
+                      if (isNaN(baseValue)) baseValue = 1; // Fallback
+                       currentOperand = formatResult(baseValue * (value / 100));
+
+                 } else if (previousOperand !== '' && (operation === 'multiply' || operation === 'divide')) {
+                     // % just divides current number by 100 for * / /
+                      currentOperand = formatResult(value / 100);
+                 }
+                  else {
+                       // No operation pending, just divide current by 100
+                       currentOperand = formatResult(value / 100);
+                  }
+
+                 // After % is calculated, it usually completes the operation or readies for =, not reset display
+                 displayNeedsReset = true; // Ready for next action/number, treat % result like end of input
+             } catch(error) {
+                  console.error("Percent Error:", error.message)
+                 setError();
+             }
+        }
+
+        function toggleAngleMode() {
+             if (angleMode === 'DEG') {
+                 angleMode = 'RAD';
+                 angleModeButton.textContent = 'RAD';
+             } else {
+                 angleMode = 'DEG';
+                 angleModeButton.textContent = 'DEG';
+             }
+             angleModeButton.classList.toggle('active', angleMode === 'RAD');
+        }
+
+        // Memory Functions
+         function memoryClear() {
+             memoryValue = 0;
+         }
+         function memoryRecall() {
+             if (isError) return;
+             currentOperand = String(memoryValue);
+             displayNeedsReset = true;
+             updateDisplay(); // Update display after MR
+         }
+         function memoryAdd() {
+             if (isError || currentOperand === '') return;
+             try {
+                 memoryValue += parseFloat(currentOperand);
+                 displayNeedsReset = true;
+             } catch { setError(); }
+         }
+         function memorySubtract() {
+             if (isError || currentOperand === '') return;
+              try {
+                 memoryValue -= parseFloat(currentOperand);
+                 displayNeedsReset = true;
+              } catch { setError(); }
+         }
+
+        function setError() {
+            isError = true;
+            currentOperand = 'Error';
+            previousOperand = '';
+            operation = null;
+            isCalculatingPower = false;
+            updateDisplay();
+        }
+
+         // --- Keyboard Input Handling ---
+
+         function handleKeyPress(event) {
+             const key = event.key;
+             let actionHandled = true; // Assume handled unless proven otherwise
+
+             // Check for error state first
+              if (isError && key !== 'Escape' && key !== 'Backspace') {
+                  return; // Only allow Clear or ClearEntry in error state
+              }
+
+             // Map keys to button actions
+             if (key >= '0' && key <= '9') {
+                 handleNumberClick(key);
+             } else if (key === '.') {
+                 handleNumberClick('.');
+             } else if (key === '+') {
+                 handleOperatorClick('add');
+             } else if (key === '-') {
+                 handleOperatorClick('subtract');
+             } else if (key === '*') {
+                 handleOperatorClick('multiply');
+             } else if (key === '/') {
+                 event.preventDefault(); // Prevent browser find shortcut
+                 handleOperatorClick('divide');
+             } else if (key === 'Enter' || key === '=') {
+                 event.preventDefault(); // Prevent form submission if inside one
+                 calculate();
+             } else if (key === 'Backspace') {
+                  event.preventDefault(); // Prevent navigating back
+                 handleAction('clear-entry');
+             } else if (key === 'Escape' || key === 'Delete') {
+                 handleAction('clear');
+             } else if (key === '%') {
+                 handleAction('percent');
+             } else if (key.toLowerCase() === 'n') { // Negate with 'n'
+                 handleAction('negate');
+             } else if (key === '^') {
+                 handleOperatorClick('power');
+             // --- Scientific Functions Mapping ---
+             } else if (key.toLowerCase() === 'p') { // Pi with 'p'
+                 handleFunctionClick('pi');
+             } else if (key.toLowerCase() === 'e') { // Euler's with 'e'
+                 handleFunctionClick('e');
+             } else if (key.toLowerCase() === 's') { // Sin with 's'
+                 handleFunctionClick('sin');
+             } else if (key.toLowerCase() === 'c') { // Cos with 'c'
+                 handleFunctionClick('cos');
+             } else if (key.toLowerCase() === 't') { // Tan with 't'
+                 handleFunctionClick('tan');
+             } else if (key.toLowerCase() === 'l') { // Log base 10 with 'l'
+                 handleFunctionClick('log');
+             } else if (key.toLowerCase() === 'r') { // Reciprocal with 'r'
+                 handleFunctionClick('reciprocal');
+             } else if (key.toLowerCase() === 'q') { // Square root with 'q'
+                 handleFunctionClick('sqrt');
+             } else if (key === '!') { // Factorial with '!'
+                 handleFunctionClick('factorial');
+             }
+             else {
+                 actionHandled = false; // Key didn't match any known action
+             }
+
+              // Visual feedback for key press (optional but nice)
+             if(actionHandled) {
+                  // Find button corresponding to the key and simulate :active style
+                  const button = findButtonForKey(key);
+                  if(button) {
+                       button.classList.add('active-key');
+                       setTimeout(() => button.classList.remove('active-key'), 100); // Remove style after short delay
+                  }
+             }
+         }
+
+         function findButtonForKey(key) {
+             // Normalize key for lookup (e.g., Enter vs '=', * vs numpad *)
+             let lookupKey = key;
+             if (key === '=' || key === 'Enter') lookupKey = 'Enter';
+             if (key === '*') lookupKey = '*'; // Use '*' for both numpad and main
+             if (key === '/') lookupKey = '/';
+             if (key === '+') lookupKey = '+';
+             if (key === '-') lookupKey = '-';
+             if (key === 'Escape' || key === 'Delete') lookupKey = 'Escape';
+             if (key === 'Backspace') lookupKey = 'Backspace';
+             // Add other normalizations if needed (e.g., lowercase for letters)
+             if (key.match(/^[a-zA-Z]$/)) lookupKey = key.toLowerCase();
+
+
+             return document.querySelector(`button[data-key='${lookupKey}']`);
+         }
+
+
+        // --- Event Listeners ---
+
+        // Button Click Listener (using Event Delegation)
+        buttonsContainer.addEventListener('click', (event) => {
+            if (!event.target.matches('button')) return;
+
+            const button = event.target;
+            const { value } = button.dataset;
+            const { action } = button.dataset;
+
+            if (isError && action !== 'clear' && action !== 'clear-entry') {
+                 return;
+            }
+
+            if (value !== undefined) {
+                handleNumberClick(value);
+            } else if (action !== undefined) {
+                 // Differentiate between operators and other actions
+                 if (['add', 'subtract', 'multiply', 'divide', 'power'].includes(action)) {
+                      handleOperatorClick(action);
+                 } else if (['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'log', 'ln', 'sqrt', 'cbrt', 'square', 'cube', 'reciprocal', 'factorial', 'pi', 'e'].includes(action)) {
+                     handleFunctionClick(action);
+                 } else {
+                      handleAction(action); // Handle C, CE, =, %, negate, memory, mode
+                 }
+            }
+            // updateDisplay() is called within the handler functions now for better timing
+        });
+
+        // Keyboard Input Listener
+        window.addEventListener('keydown', handleKeyPress);
+
+
+        // Initial display update
+        updateDisplay();
+
+    </script>
+
+</body>
+</html>
